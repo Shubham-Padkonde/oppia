@@ -1,0 +1,21 @@
+Oppia #21258: Git remote test fixtures
+Captured source inspection and saved official test-run output.
+
+$ inspect fixtures at origin/develop
+Real process fixture constructors: 20
+PopenStub fixture constructors: 0
+
+$ inspect fixtures at git-remote-process-stubs
+Real process fixture constructors: 0
+PopenStub fixture constructors: 20
+
+SUCCESS   scripts.git_changes_utils_test: 50 tests (154.5 secs)
+
+Name                           Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------
+scripts/git_changes_utils.py     176      0     80      0   100%
+--------------------------------------------------------------------------
+TOTAL                            176      0     80      0   100%
+
+The application-wide suite was not run.
+This is a transcript render, not a browser screenshot or timing comparison.
