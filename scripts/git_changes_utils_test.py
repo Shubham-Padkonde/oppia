@@ -23,7 +23,7 @@ import sys
 import tempfile
 
 from core.tests import test_utils
-from scripts import common, git_changes_utils
+from scripts import common, git_changes_utils, scripts_test_utils
 
 from typing import Dict, List, Set, Tuple
 
@@ -52,25 +52,19 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
         )
 
     def test_get_upstream_remote_name_without_errors(self) -> None:
-        process_for_remote = subprocess.Popen(
-            [b'echo', b'origin\nupstream'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_remote = scripts_test_utils.PopenStub(
+            stdout=b'origin\nupstream\n'
         )
-        process_for_upstream_url = subprocess.Popen(
-            [b'echo', b'https://github.com/oppia/oppia.git'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_upstream_url = scripts_test_utils.PopenStub(
+            stdout=b'https://github.com/oppia/oppia.git\n'
         )
-        process_for_origin_url = subprocess.Popen(
-            [b'echo', b'https://github.com/testuser/oppia.git'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_origin_url = scripts_test_utils.PopenStub(
+            stdout=b'https://github.com/testuser/oppia.git\n'
         )
 
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[str], stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             if 'remote.origin.url' in cmd_tokens:
                 return process_for_origin_url
             elif 'remote.upstream.url' in cmd_tokens:
@@ -100,14 +94,12 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
         def mock_communicate() -> Tuple[bytes, bytes]:
             return (b'test', b'test_oppia_error')
 
-        process = subprocess.Popen(
-            [b'echo', b'test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process = scripts_test_utils.PopenStub(stdout=b'test\n')
         communicate_swap = self.swap(process, 'communicate', mock_communicate)
 
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[str], stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             return process
 
         popen_swap = self.swap_with_checks(
@@ -126,23 +118,19 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
         def mock_communicate() -> Tuple[str, str]:
             return ('test', 'test_oppia_error')
 
-        process_for_remote = subprocess.Popen(
-            [b'echo', b'origin\nupstream'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_remote = scripts_test_utils.PopenStub(
+            stdout=b'origin\nupstream\n'
         )
 
-        process_for_remote_url = subprocess.Popen(
-            [b'echo', b'https://github.com/testuser/oppia.git'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_remote_url = scripts_test_utils.PopenStub(
+            stdout=b'https://github.com/testuser/oppia.git\n'
         )
 
         def mock_popen(
             cmd_tokens: List[str],  # pylint: disable=unused-argument
             stdout: int,  # pylint: disable=unused-argument
             stderr: int,  # pylint: disable=unused-argument
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             if 'config' in cmd_tokens:
                 return process_for_remote_url
             else:
@@ -168,13 +156,11 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
                     git_changes_utils.get_upstream_git_repository_remote_name()
 
     def test_get_upstream_remote_name_with_no_remote_set(self) -> None:
-        process_for_remote = subprocess.Popen(
-            [b'echo', b''], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process_for_remote = scripts_test_utils.PopenStub(stdout=b'\n')
 
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[bytes], stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             return process_for_remote
 
         popen_swap = self.swap_with_checks(
@@ -201,25 +187,19 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
             git_changes_utils.get_upstream_git_repository_remote_name()
 
     def test_get_upstream_remote_name_with_multiple_remotes(self) -> None:
-        process_for_remote = subprocess.Popen(
-            [b'echo', b'origin\norigintwo'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_remote = scripts_test_utils.PopenStub(
+            stdout=b'origin\norigintwo\n'
         )
-        process_for_origin_url = subprocess.Popen(
-            [b'echo', b'https://github.com/oppia/oppia.git'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_origin_url = scripts_test_utils.PopenStub(
+            stdout=b'https://github.com/oppia/oppia.git\n'
         )
-        process_for_origintwo_url = subprocess.Popen(
-            [b'echo', b'https://github.com/oppia/oppia.git'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_origintwo_url = scripts_test_utils.PopenStub(
+            stdout=b'https://github.com/oppia/oppia.git\n'
         )
 
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[str], stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             if 'remote.origin.url' in cmd_tokens:
                 return process_for_origin_url
             elif 'remote.origintwo.url' in cmd_tokens:
@@ -254,25 +234,19 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
             git_changes_utils.get_upstream_git_repository_remote_name()
 
     def test_get_local_remote_name_without_errors(self) -> None:
-        process_for_remote = subprocess.Popen(
-            [b'echo', b'origin\nupstream'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_remote = scripts_test_utils.PopenStub(
+            stdout=b'origin\nupstream\n'
         )
-        process_for_upstream_url = subprocess.Popen(
-            [b'echo', b'https://github.com/oppia/oppia.git'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_upstream_url = scripts_test_utils.PopenStub(
+            stdout=b'https://github.com/oppia/oppia.git\n'
         )
-        process_for_origin_url = subprocess.Popen(
-            [b'echo', b'https://github.com/testuser/oppia.git'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_origin_url = scripts_test_utils.PopenStub(
+            stdout=b'https://github.com/testuser/oppia.git\n'
         )
 
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[str], stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             if 'remote.origin.url' in cmd_tokens:
                 return process_for_origin_url
             elif 'remote.upstream.url' in cmd_tokens:
@@ -300,16 +274,14 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
         def mock_communicate() -> Tuple[bytes, bytes]:
             return (b'test', b'test_oppia_error')
 
-        process = subprocess.Popen(
-            [b'echo', b'test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process = scripts_test_utils.PopenStub(stdout=b'test\n')
         communicate_swap = self.swap(process, 'communicate', mock_communicate)
 
         def mock_popen(
             cmd_tokens: List[str],  # pylint: disable=unused-argument
             stdout: int,  # pylint: disable=unused-argument
             stderr: int,  # pylint: disable=unused-argument
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             return process
 
         popen_swap = self.swap_with_checks(
@@ -328,21 +300,17 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
         def mock_communicate() -> Tuple[str, str]:
             return ('test', 'test_oppia_error')
 
-        process_for_remote = subprocess.Popen(
-            [b'echo', b'origin\nupstream'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_remote = scripts_test_utils.PopenStub(
+            stdout=b'origin\nupstream\n'
         )
 
-        process_for_remote_url = subprocess.Popen(
-            [b'echo', b'https://github.com/testuser/oppia.git'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_remote_url = scripts_test_utils.PopenStub(
+            stdout=b'https://github.com/testuser/oppia.git\n'
         )
 
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[str], stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             if 'config' in cmd_tokens:
                 return process_for_remote_url
             else:
@@ -368,13 +336,11 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
                     git_changes_utils.get_local_git_repository_remote_name()
 
     def test_get_local_remote_name_with_no_remote_set(self) -> None:
-        process_for_remote = subprocess.Popen(
-            [b'echo', b''], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process_for_remote = scripts_test_utils.PopenStub(stdout=b'\n')
 
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[bytes], stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             return process_for_remote
 
         popen_swap = self.swap_with_checks(
@@ -401,25 +367,19 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
             git_changes_utils.get_local_git_repository_remote_name()
 
     def test_get_local_remote_name_with_multiple_remotes(self) -> None:
-        process_for_remote = subprocess.Popen(
-            [b'echo', b'origin\norigintwo'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_remote = scripts_test_utils.PopenStub(
+            stdout=b'origin\norigintwo\n'
         )
-        process_for_origin_url = subprocess.Popen(
-            [b'echo', b'https://github.com/testuser/oppia.git'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_origin_url = scripts_test_utils.PopenStub(
+            stdout=b'https://github.com/testuser/oppia.git\n'
         )
-        process_for_origintwo_url = subprocess.Popen(
-            [b'echo', b'https://github.com/testusertwo/oppia.git'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        process_for_origintwo_url = scripts_test_utils.PopenStub(
+            stdout=b'https://github.com/testusertwo/oppia.git\n'
         )
 
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[str], stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             if 'remote.origin.url' in cmd_tokens:
                 return process_for_origin_url
             elif 'remote.origintwo.url' in cmd_tokens:
