@@ -1,0 +1,12 @@
+Oppia #22116: shared Python dependency version check
+Captured output from the new linter on real and modified inputs.
+
+Current repository inputs:
+SUCCESS  Shared Python dependency versions check passed
+
+In-memory fixture: change only development Pillow to 10.0.0:
+pillow: requirements.in uses ==10.1.0; requirements_dev.in uses ==10.0.0. Use the same version specifiers in both files.
+FAILED  Shared Python dependency versions check failed
+
+Repository requirements files were not modified.
+This checks declared shared version specifiers; it is not a dependency resolver.
