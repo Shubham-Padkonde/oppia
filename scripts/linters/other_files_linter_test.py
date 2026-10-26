@@ -795,6 +795,90 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
             FILE_CACHE
         ).perform_all_lint_checks()
         self.assertTrue(isinstance(lint_task_report, list))
+        self.assertIn(
+            'Shared Python dependency versions',
+            [result.name for result in lint_task_report],
+        )
+
+    def test_shared_python_dependencies_accept_matching_versions(self) -> None:
+        requirements = {
+            'requirements.in': (
+                '# Production dependencies',
+                '',
+                '  Example_Package[extra]==1.2.0  # Explanation',
+                'production-only==2.0',
+            ),
+            'requirements_dev.in': (
+                'example-package==1.2.0',
+                'development-only==3.0',
+            ),
+        }
+        with self.swap(FILE_CACHE, 'readlines', requirements.__getitem__):
+            result = other_files_linter.CustomLintChecksManager(
+                FILE_CACHE
+            ).check_shared_python_dependency_versions()
+        self.assertFalse(result.failed)
+        self.assertEqual(
+            result.get_report(),
+            ['SUCCESS  Shared Python dependency versions check passed'],
+        )
+
+    def test_shared_python_dependencies_report_all_mismatches(self) -> None:
+        requirements = {
+            'requirements.in': ('PyYAML==6.0.2', 'Pillow==10.1.0'),
+            'requirements_dev.in': ('PyYAML==6.0.1', 'Pillow==10.0.0'),
+        }
+        with self.swap(FILE_CACHE, 'readlines', requirements.__getitem__):
+            result = other_files_linter.CustomLintChecksManager(
+                FILE_CACHE
+            ).check_shared_python_dependency_versions()
+        self.assertTrue(result.failed)
+        self.assertEqual(
+            result.get_report(),
+            [
+                'pillow: requirements.in uses ==10.1.0; requirements_dev.in '
+                'uses ==10.0.0. Use the same version specifiers in both files.',
+                'pyyaml: requirements.in uses ==6.0.2; requirements_dev.in '
+                'uses ==6.0.1. Use the same version specifiers in both files.',
+                'FAILED  Shared Python dependency versions check failed',
+            ],
+        )
+
+    def test_shared_python_dependencies_report_invalid_requirements(
+        self,
+    ) -> None:
+        requirements = {
+            'requirements.in': ('# Comment', 'not a requirement'),
+            'requirements_dev.in': (),
+        }
+        with self.swap(FILE_CACHE, 'readlines', requirements.__getitem__):
+            result = other_files_linter.CustomLintChecksManager(
+                FILE_CACHE
+            ).check_shared_python_dependency_versions()
+        self.assertTrue(result.failed)
+        self.assertIn(
+            'requirements.in:2: Invalid Python requirement: not a requirement',
+            result.get_report(),
+        )
+
+    def test_shared_python_dependencies_keep_all_version_specifiers(
+        self,
+    ) -> None:
+        requirements = {
+            'requirements.in': ('Pillow==10.0.0', 'Pillow==10.1.0'),
+            'requirements_dev.in': ('Pillow==10.1.0',),
+        }
+        with self.swap(FILE_CACHE, 'readlines', requirements.__getitem__):
+            result = other_files_linter.CustomLintChecksManager(
+                FILE_CACHE
+            ).check_shared_python_dependency_versions()
+        self.assertTrue(result.failed)
+        self.assertIn(
+            'pillow: requirements.in uses ==10.0.0, ==10.1.0; '
+            'requirements_dev.in uses ==10.1.0. Use the same version '
+            'specifiers in both files.',
+            result.get_report(),
+        )
 
     def test_get_linters_with_success(self) -> None:
         custom_linter, third_party_linter = other_files_linter.get_linters(

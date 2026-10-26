@@ -23,7 +23,9 @@ import os
 import re
 
 import yaml
-from typing import Any, Dict, Final, List, Tuple, TypedDict
+from packaging import requirements as packaging_requirements
+from packaging import utils as packaging_utils
+from typing import Any, Dict, Final, List, Set, Tuple, TypedDict
 
 from .. import concurrent_task_utils
 from . import linter_utils
@@ -199,6 +201,62 @@ class CustomLintChecksManager(linter_utils.BaseLinter):
                 file content.
         """
         self.file_cache = file_cache
+
+    def check_shared_python_dependency_versions(
+        self,
+    ) -> concurrent_task_utils.TaskResult:
+        """Checks that shared Python dependencies use the same versions.
+
+        Scripts and production code currently share some dependencies. Keep
+        their version specifiers in sync until those dependencies are split.
+        Extras do not change the version of the underlying distribution.
+
+        Returns:
+            TaskResult. The result of checking the two requirements inputs.
+        """
+        name = 'Shared Python dependency versions'
+        error_messages = []
+        requirements_by_file: Dict[str, Dict[str, Set[str]]] = {}
+        for filename in ('requirements.in', 'requirements_dev.in'):
+            versions: Dict[str, Set[str]] = {}
+            for line_number, line in enumerate(
+                self.file_cache.readlines(filename), start=1
+            ):
+                line = re.split(r'\s+#', line, maxsplit=1)[0].strip()
+                if not line or line.startswith('#'):
+                    continue
+                try:
+                    requirement = packaging_requirements.Requirement(line)
+                except packaging_requirements.InvalidRequirement:
+                    error_messages.append(
+                        '%s:%s: Invalid Python requirement: %s'
+                        % (filename, line_number, line)
+                    )
+                    continue
+                package_name: str = packaging_utils.canonicalize_name(
+                    requirement.name
+                )
+                versions.setdefault(package_name, set()).add(
+                    str(requirement.specifier)
+                )
+            requirements_by_file[filename] = versions
+
+        prod_versions = requirements_by_file['requirements.in']
+        dev_versions = requirements_by_file['requirements_dev.in']
+        for package_name in sorted(prod_versions.keys() & dev_versions.keys()):
+            if prod_versions[package_name] != dev_versions[package_name]:
+                error_messages.append(
+                    '%s: requirements.in uses %s; requirements_dev.in uses '
+                    '%s. Use the same version specifiers in both files.'
+                    % (
+                        package_name,
+                        ', '.join(sorted(prod_versions[package_name])),
+                        ', '.join(sorted(dev_versions[package_name])),
+                    )
+                )
+        return concurrent_task_utils.TaskResult(
+            name, bool(error_messages), error_messages, error_messages
+        )
 
     def check_duplicate_method_names_in_user_utilities(
         self,
@@ -552,6 +610,7 @@ class CustomLintChecksManager(linter_utils.BaseLinter):
             self.check_duplicate_method_names_in_user_utilities()
         )
         linter_stdout.append(self.check_lighthouse_page_coverage())
+        linter_stdout.append(self.check_shared_python_dependency_versions())
 
         return linter_stdout
 
