@@ -18,11 +18,14 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
+import tempfile
 
 from core.tests import test_utils
 from scripts import run_mypy_checks
 
+from mypy import api as mypy_api
 from typing import Final, List, Optional, Tuple
 
 PYTHON_CMD: Final = 'python3'
@@ -148,12 +151,56 @@ class MypyScriptChecks(test_utils.GenericTestBase):
             '--config-file',
             './mypy.ini',
             '--warn-unreachable',
+            '--follow-imports=silent',
             'file1.py',
             'file2.py',
         ]
         with self.directories_swap:
             cmd = run_mypy_checks.get_mypy_cmd(['file1.py', 'file2.py'])
             self.assertEqual(cmd, expected_cmd)
+
+    def test_targeted_checks_preserve_imported_types(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dependency_path = os.path.join(temp_dir, 'dependency.py')
+            target_path = os.path.join(temp_dir, 'target.py')
+            config_path = os.path.join(temp_dir, 'mypy.ini')
+            with open(dependency_path, 'w', encoding='utf-8') as dependency:
+                dependency.write(
+                    'unrelated_error: int = "wrong"\n'
+                    'def increment(value: int) -> int:\n'
+                    '    return value + 1\n'
+                )
+            with open(config_path, 'w', encoding='utf-8') as config:
+                config.write(
+                    '[mypy]\nstrict = True\ncache_dir = %s\n'
+                    % os.path.join(temp_dir, 'cache')
+                )
+            with self.swap(run_mypy_checks, 'CONFIG_FILE_PATH', config_path):
+                with open(target_path, 'w', encoding='utf-8') as target:
+                    target.write(
+                        'from dependency import increment\n'
+                        'result: int = increment(1)\n'
+                    )
+                command = run_mypy_checks.get_mypy_cmd([target_path])
+                stdout, stderr, status = mypy_api.run(command[1:])
+                self.assertEqual(status, 0, stdout + stderr)
+
+                with open(target_path, 'w', encoding='utf-8') as target:
+                    target.write(
+                        'from dependency import increment\n'
+                        'result: int = increment("wrong")\n'
+                    )
+                stdout, stderr, status = mypy_api.run(command[1:])
+                self.assertEqual(status, 1, stdout + stderr)
+                self.assertIn('incompatible type "str"', stdout)
+                self.assertNotIn('dependency.py:', stdout)
+
+                command = run_mypy_checks.get_mypy_cmd(
+                    [target_path, dependency_path]
+                )
+                stdout, stderr, status = mypy_api.run(command[1:])
+                self.assertEqual(status, 1, stdout + stderr)
+                self.assertIn('dependency.py:', stdout)
 
     def test_running_script_without_mypy_errors(self) -> None:
         with self.popen_swap_success:

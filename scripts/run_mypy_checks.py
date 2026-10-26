@@ -92,7 +92,10 @@ _PARSER: Final = argparse.ArgumentParser(
     description='Python type checking using mypy script.'
 )
 _PARSER.add_argument(
-    '--files', help='Files to type-check', action='store', nargs='+'
+    '--files',
+    help='Files to report type errors for; imported modules are still analyzed.',
+    action='store',
+    nargs='+',
 )
 
 
@@ -109,11 +112,15 @@ def get_mypy_cmd(files: Optional[List[str]]) -> List[str]:
     mypy_cmd = 'mypy'
 
     if files:
+        # Retain types from imports without reporting errors in files that
+        # the contributor did not request. Full-repository checks still
+        # report errors in every module.
         cmd = [
             mypy_cmd,
             '--config-file',
             CONFIG_FILE_PATH,
             '--warn-unreachable',
+            '--follow-imports=silent',
         ] + files
     else:
         excluded_files_regex = '|'.join(EXCLUDED_DIRECTORIES)
