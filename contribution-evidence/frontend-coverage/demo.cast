@@ -1,0 +1,8 @@
+{"version": 2, "width": 106, "height": 30, "timestamp": 1793026155, "title": "Oppia frontend coverage: actual before/after output"}
+[0.0, "o", "Oppia #22583 | Local LCOV fixture\r\nActual command output; both runs should exit 1.\r\nFixture: covered line 2; uncovered lines 7 and 12.\r\n\r\n"]
+[1.0, "o", "$ python record-oppia-coverage.py before\r\n"]
+[1.7115655279994826, "o", "ERROR:root:core/templates/example.ts seems to be not completely tested. Make sure it's fully covered.\r\n\r\n------------------------------------\r\nFrontend Coverage Checks Not Passed.\r\n------------------------------------\r\n"]
+[1.8115655279994827, "o", "[exit 1]\r\n\r\n"]
+[6.711565527999483, "o", "$ python record-oppia-coverage.py after\r\n"]
+[7.341544864999378, "o", "ERROR:root:core/templates/example.ts seems to be not completely tested. Make sure it's fully covered.\r\nUncovered lines: 7, 12\r\n\r\n------------------------------------\r\nFrontend Coverage Checks Not Passed.\r\n------------------------------------\r\n"]
+[7.441544864999377, "o", "[exit 1]\r\n\r\n"]
