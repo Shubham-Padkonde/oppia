@@ -1,0 +1,29 @@
+Oppia #23034: targeted MyPy diagnostics
+Captured output from real MyPy invocations on temporary fixtures.
+
+Before: a correct target reports an unrelated imported-file error
+dependency.py:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+Found 1 error in 1 file (checked 1 source file)
+
+Exit code: 1
+
+After: the same correct target passes
+Success: no issues found in 1 source file
+
+Exit code: 0
+
+After: a wrong argument still fails against the imported signature
+target.py:2: error: Argument 1 to "increment" has incompatible type "str"; expected "int"  [arg-type]
+Found 1 error in 1 file (checked 1 source file)
+
+Exit code: 1
+
+After: explicitly requested dependency errors remain visible
+dependency.py:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+target.py:2: error: Argument 1 to "increment" has incompatible type "str"; expected "int"  [arg-type]
+Found 2 errors in 2 files (checked 2 source files)
+
+Exit code: 1
+
+Full-repository checks keep the existing import behavior.
+This demonstrates diagnostic scope, not a performance improvement.
