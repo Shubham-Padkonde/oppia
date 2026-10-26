@@ -10,3 +10,7 @@ FAILED  Shared Python dependency versions check failed
 
 Repository requirements files were not modified.
 This checks declared shared version specifiers; it is not a dependency resolver.
+
+Validation: 27 backend tests pass.
+New check: 23/23 statements and 10/10 branches covered (100%).
+Overall module: 98%; five existing branches outside the change remain uncovered.
