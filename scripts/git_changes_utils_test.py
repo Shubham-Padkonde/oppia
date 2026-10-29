@@ -91,11 +91,9 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
     def test_get_upstream_remote_name_with_error_in_obtaining_remote(
         self,
     ) -> None:
-        def mock_communicate() -> Tuple[bytes, bytes]:
-            return (b'test', b'test_oppia_error')
-
-        process = scripts_test_utils.PopenStub(stdout=b'test\n')
-        communicate_swap = self.swap(process, 'communicate', mock_communicate)
+        process = scripts_test_utils.PopenStub(
+            stdout=b'test', stderr=b'test_oppia_error'
+        )
 
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[str], stdout: int, stderr: int
@@ -108,22 +106,19 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
             mock_popen,
             expected_args=[(['git', 'remote'],)],
         )
-        with popen_swap, communicate_swap:
+        with popen_swap:
             with self.assertRaisesRegex(ValueError, 'test_oppia_error'):
                 git_changes_utils.get_upstream_git_repository_remote_name()
 
     def test_get_upstream_remote_name_with_error_in_obtaining_remote_url(
         self,
     ) -> None:
-        def mock_communicate() -> Tuple[str, str]:
-            return ('test', 'test_oppia_error')
-
         process_for_remote = scripts_test_utils.PopenStub(
             stdout=b'origin\nupstream\n'
         )
 
         process_for_remote_url = scripts_test_utils.PopenStub(
-            stdout=b'https://github.com/testuser/oppia.git\n'
+            stdout=b'test', stderr=b'test_oppia_error'
         )
 
         def mock_popen(
@@ -136,10 +131,6 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
             else:
                 return process_for_remote
 
-        communicate_swap = self.swap(
-            process_for_remote_url, 'communicate', mock_communicate
-        )
-
         popen_swap = self.swap_with_checks(
             subprocess,
             'Popen',
@@ -150,10 +141,9 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
             ],
         )
 
-        with communicate_swap:
-            with popen_swap:
-                with self.assertRaisesRegex(ValueError, 'test_oppia_error'):
-                    git_changes_utils.get_upstream_git_repository_remote_name()
+        with popen_swap:
+            with self.assertRaisesRegex(ValueError, 'test_oppia_error'):
+                git_changes_utils.get_upstream_git_repository_remote_name()
 
     def test_get_upstream_remote_name_with_no_remote_set(self) -> None:
         process_for_remote = scripts_test_utils.PopenStub(stdout=b'\n')
@@ -271,11 +261,9 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
             )
 
     def test_get_local_remote_name_with_error_in_obtaining_remote(self) -> None:
-        def mock_communicate() -> Tuple[bytes, bytes]:
-            return (b'test', b'test_oppia_error')
-
-        process = scripts_test_utils.PopenStub(stdout=b'test\n')
-        communicate_swap = self.swap(process, 'communicate', mock_communicate)
+        process = scripts_test_utils.PopenStub(
+            stdout=b'test', stderr=b'test_oppia_error'
+        )
 
         def mock_popen(
             cmd_tokens: List[str],  # pylint: disable=unused-argument
@@ -290,22 +278,19 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
             mock_popen,
             expected_args=[(['git', 'remote'],)],
         )
-        with popen_swap, communicate_swap:
+        with popen_swap:
             with self.assertRaisesRegex(ValueError, 'test_oppia_error'):
                 git_changes_utils.get_local_git_repository_remote_name()
 
     def test_get_local_remote_name_with_error_in_obtaining_remote_url(
         self,
     ) -> None:
-        def mock_communicate() -> Tuple[str, str]:
-            return ('test', 'test_oppia_error')
-
         process_for_remote = scripts_test_utils.PopenStub(
             stdout=b'origin\nupstream\n'
         )
 
         process_for_remote_url = scripts_test_utils.PopenStub(
-            stdout=b'https://github.com/testuser/oppia.git\n'
+            stdout=b'test', stderr=b'test_oppia_error'
         )
 
         def mock_popen(  # pylint: disable=unused-argument
@@ -315,10 +300,6 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
                 return process_for_remote_url
             else:
                 return process_for_remote
-
-        communicate_swap = self.swap(
-            process_for_remote_url, 'communicate', mock_communicate
-        )
 
         popen_swap = self.swap_with_checks(
             subprocess,
@@ -330,10 +311,9 @@ class GitChangesUtilsTests(test_utils.GenericTestBase):
             ],
         )
 
-        with communicate_swap:
-            with popen_swap:
-                with self.assertRaisesRegex(ValueError, 'test_oppia_error'):
-                    git_changes_utils.get_local_git_repository_remote_name()
+        with popen_swap:
+            with self.assertRaisesRegex(ValueError, 'test_oppia_error'):
+                git_changes_utils.get_local_git_repository_remote_name()
 
     def test_get_local_remote_name_with_no_remote_set(self) -> None:
         process_for_remote = scripts_test_utils.PopenStub(stdout=b'\n')

@@ -149,9 +149,7 @@ class RunAcceptanceTestsTests(test_utils.GenericTestBase):
                 run_acceptance_tests.compile_test_ts_files()
 
     def test_compile_test_ts_files_success(self) -> None:
-        process = subprocess.Popen(
-            ['test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process = scripts_test_utils.PopenStub()
 
         def mock_os_path_exists(unused_path: str) -> bool:
             return True
@@ -166,11 +164,8 @@ class RunAcceptanceTestsTests(test_utils.GenericTestBase):
 
         def mock_popen_call(  # pylint: disable=unused-argument
             cmd_tokens: List[str], *args: str, **kwargs: str
-        ) -> subprocess.Popen[bytes]:
+        ) -> scripts_test_utils.PopenStub:
             return process
-
-        def mock_communicate(unused_self: str) -> Tuple[bytes, bytes]:
-            return (b'', b'')
 
         puppeteer_acceptance_tests_dir_path = os.path.join(
             common.CURR_DIR, 'core', 'tests', 'puppeteer-acceptance-tests'
@@ -208,12 +203,8 @@ class RunAcceptanceTestsTests(test_utils.GenericTestBase):
             mock_popen_call,
             expected_args=[(expected_cmd,)],
         )
-        communicate_swap = self.swap(
-            subprocess.Popen, 'communicate', mock_communicate
-        )
-
         with os_path_exists_swap, shutil_rmtree_swap, process_swap:
-            with shutil_copytree_swap, communicate_swap:
+            with shutil_copytree_swap:
                 run_acceptance_tests.compile_test_ts_files()
 
     def test_install_playwright_dependencies_success(self) -> None:

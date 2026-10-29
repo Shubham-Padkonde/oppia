@@ -21,7 +21,7 @@ from __future__ import annotations
 import subprocess
 
 from core.tests import test_utils
-from scripts import run_mypy_checks
+from scripts import run_mypy_checks, scripts_test_utils
 
 from typing import Final, List, Optional, Tuple
 
@@ -72,9 +72,7 @@ class MypyScriptChecks(test_utils.GenericTestBase):
 
     def setUp(self) -> None:
         super().setUp()
-        process_success = subprocess.Popen(
-            ['echo', 'test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process_success = scripts_test_utils.PopenStub(stdout=b'test\n')
 
         def mock_popen_success(
             unused_cmd: str,
@@ -82,12 +80,10 @@ class MypyScriptChecks(test_utils.GenericTestBase):
             stdin: Optional[str] = None,  # pylint: disable=unused-argument
             stderr: Optional[str] = None,  # pylint: disable=unused-argument
             env: Optional[str] = None,  # pylint: disable=unused-argument
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             return process_success
 
-        process_failure = subprocess.Popen(
-            ['test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process_failure = scripts_test_utils.PopenStub(return_code=1)
 
         def mock_popen_failure(
             unused_cmd: str,
@@ -95,7 +91,7 @@ class MypyScriptChecks(test_utils.GenericTestBase):
             stdin: Optional[str] = None,  # pylint: disable=unused-argument
             stderr: Optional[str] = None,  # pylint: disable=unused-argument
             env: Optional[str] = None,  # pylint: disable=unused-argument
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             return process_failure
 
         self.popen_swap_success = self.swap(

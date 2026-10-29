@@ -20,7 +20,12 @@ import builtins
 import subprocess
 
 from core.tests import test_utils
-from scripts import common, generate_root_files_mapping, run_typescript_checks
+from scripts import (
+    common,
+    generate_root_files_mapping,
+    run_typescript_checks,
+    scripts_test_utils,
+)
 
 
 class GenerateRootFilesMappingTests(test_utils.GenericTestBase):
@@ -52,13 +57,11 @@ class GenerateRootFilesMappingTests(test_utils.GenericTestBase):
         self.print_messages = []
 
     def test_generate_root_files_mapping_success(self) -> None:
-        process = subprocess.Popen(
-            ['echo', 'test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process = scripts_test_utils.PopenStub(stdout=b'test\n')
 
         def mock_subprocess_popen(  # pylint: disable=unused-argument
             cmd: list[str], stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:
+        ) -> scripts_test_utils.PopenStub:
             self.assertEqual(
                 cmd,
                 [
@@ -85,16 +88,11 @@ class GenerateRootFilesMappingTests(test_utils.GenericTestBase):
                 )
 
     def test_generate_root_files_mapping_failure(self) -> None:
-        def mock_communicate() -> tuple[bytes, bytes]:
-            return (b'', b'Error')
-
-        process = subprocess.Popen(
-            ['echo', 'test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process = scripts_test_utils.PopenStub(stderr=b'Error')
 
         def mock_subprocess_popen(  # pylint: disable=unused-argument
             cmd: list[str], stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:
+        ) -> scripts_test_utils.PopenStub:
             self.assertEqual(
                 cmd,
                 [
@@ -104,12 +102,11 @@ class GenerateRootFilesMappingTests(test_utils.GenericTestBase):
             )
             return process
 
-        communicate_swap = self.swap(process, 'communicate', mock_communicate)
         subprocess_popen_swap = self.swap(
             subprocess, 'Popen', mock_subprocess_popen
         )
 
-        with self.compile_and_check_typescript_swap, communicate_swap:
+        with self.compile_and_check_typescript_swap:
             with subprocess_popen_swap:
                 with self.assertRaisesRegex(Exception, 'Error'):
                     generate_root_files_mapping.main()

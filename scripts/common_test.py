@@ -34,13 +34,15 @@ import subprocess
 import sys
 import tempfile
 import time
+from types import TracebackType
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
 from core.tests import test_utils
+from scripts import scripts_test_utils
 
 import yaml
-from typing import Generator, List, Literal, NoReturn, Tuple
+from typing import Generator, List, Literal, NoReturn, Optional, Tuple, Type
 
 from . import common
 
@@ -1333,13 +1335,11 @@ class CommonTests(test_utils.GenericTestBase):
             self.assertTrue(common.is_oppia_server_already_running())
 
     def test_start_subprocess_for_result(self) -> None:
-        process = subprocess.Popen(
-            ['echo', 'test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process = scripts_test_utils.PopenStub(stdout=b'test\n')
 
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[str], stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:
+        ) -> scripts_test_utils.PopenStub:
             return process
 
         popen_swap = self.swap(subprocess, 'Popen', mock_popen)
@@ -1413,13 +1413,27 @@ class UrlRetrieveTests(CommonTests):
 
         self.curl_is_called = False
 
-        successful_mock_curl_process = subprocess.Popen(
-            ['echo', 'test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        class CurlPopenStub(scripts_test_utils.PopenStub):
+            """Support the context manager used by the curl download path."""
+
+            def __enter__(self) -> scripts_test_utils.PopenStub:
+                return self
+
+            def __exit__(
+                self,
+                unused_exception_type: Optional[Type[BaseException]],
+                unused_exception: Optional[BaseException],
+                unused_traceback: Optional[TracebackType],
+            ) -> None:
+                self.stdout.close()
+                self.stderr.close()
+                self.wait()
+
+        successful_mock_curl_process = CurlPopenStub(stdout=b'test\n')
 
         def mock_successful_curl_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[str], stdout: int, stderr: int, encoding: str
-        ) -> subprocess.Popen[bytes]:
+        ) -> scripts_test_utils.PopenStub:
             self.assertEqual(cmd_tokens[0], 'curl')
             self.curl_is_called = True
             return successful_mock_curl_process

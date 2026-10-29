@@ -27,7 +27,7 @@ import sys
 from unittest import mock
 
 from core.tests import test_utils
-from scripts import common
+from scripts import common, scripts_test_utils
 
 from typing import Dict, List, Optional, Tuple
 
@@ -39,15 +39,13 @@ class PrePushHookTests(test_utils.GenericTestBase):
 
     def setUp(self) -> None:
         super().setUp()
-        process = subprocess.Popen(
-            ['echo', 'test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process = scripts_test_utils.PopenStub(stdout=b'test\n')
 
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[str],
             stdout: int = subprocess.PIPE,
             stderr: int = subprocess.PIPE,
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             return process
 
         def mock_get_remote_name() -> str:

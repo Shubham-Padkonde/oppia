@@ -26,7 +26,7 @@ import subprocess
 import sys
 
 from core.tests import test_utils
-from scripts import install_python_dev_dependencies
+from scripts import install_python_dev_dependencies, scripts_test_utils
 
 from typing import Dict, Generator, List, Optional
 
@@ -130,16 +130,12 @@ class InstallPythonDevDependenciesTests(test_utils.GenericTestBase):
         }
         installed_tools: Dict[str, str] = {}
 
-        process = subprocess.Popen(
-            ['echo', 'test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-
         def mock_popen(  # pylint: disable=unused-argument
             cmd_tokens: List[str],
             stdout: int,
             stdin: Optional[int] = None,
             stderr: Optional[int] = None,
-        ) -> subprocess.Popen[bytes]:
+        ) -> scripts_test_utils.PopenStub:
             if len(cmd_tokens) > 3 and cmd_tokens[3] == 'install':
                 package, version = cmd_tokens[4].split('==')
                 installed_tools[package] = version
@@ -153,7 +149,7 @@ class InstallPythonDevDependenciesTests(test_utils.GenericTestBase):
                         f'{package}=={version}',
                     ],
                 )
-            return process
+            return scripts_test_utils.PopenStub(stdout=b'test\n')
 
         popen_swap = self.swap(subprocess, 'Popen', mock_popen)
 

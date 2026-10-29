@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import builtins
+import io
 import json
 import os
 import subprocess
@@ -24,7 +25,7 @@ import sys
 import tempfile
 
 from core.tests import test_utils
-from scripts import common
+from scripts import common, scripts_test_utils
 
 from typing import Dict, List
 
@@ -39,13 +40,13 @@ class TypescriptChecksTests(test_utils.GenericTestBase):
 
     def setUp(self) -> None:
         super().setUp()
-        process = subprocess.Popen(
-            ['test'], stdout=subprocess.PIPE, encoding='utf-8'
-        )
+        process = scripts_test_utils.PopenStub()
+        # The compiler reads text lines, while PopenStub stores byte streams.
+        self.stdout_swap = self.swap(process, 'stdout', io.StringIO())
 
         def mock_popen(  # pylint: disable=unused-argument
             unused_cmd: str, stdout: str, encoding: str
-        ) -> subprocess.Popen[str]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             return process
 
         self.popen_swap = self.swap(subprocess, 'Popen', mock_popen)
@@ -55,7 +56,7 @@ class TypescriptChecksTests(test_utils.GenericTestBase):
         correctly with outDir in
         run_typescript_checks.TSCONFIG_FILEPATH.
         """
-        with self.popen_swap:
+        with self.popen_swap, self.stdout_swap:
             run_typescript_checks.compile_and_check_typescript(
                 run_typescript_checks.TSCONFIG_FILEPATH
             )
@@ -98,7 +99,9 @@ class TypescriptChecksTests(test_utils.GenericTestBase):
             'validate_compiled_js_dir',
             mock_validate_compiled_js_dir,
         )
-        with self.popen_swap, compiled_js_dir_swap, validate_swap:
+        with self.popen_swap, self.stdout_swap, (
+            compiled_js_dir_swap
+        ), validate_swap:
             if not os.path.exists(os.path.dirname(MOCK_COMPILED_JS_DIR)):
                 os.mkdir(os.path.dirname(MOCK_COMPILED_JS_DIR))
 
@@ -125,7 +128,9 @@ class TypescriptChecksTests(test_utils.GenericTestBase):
             'validate_compiled_js_dir',
             mock_validate_compiled_js_dir,
         )
-        with self.popen_swap, compiled_js_dir_swap, validate_swap:
+        with self.popen_swap, self.stdout_swap, (
+            compiled_js_dir_swap
+        ), validate_swap:
             if not os.path.exists(os.path.dirname(MOCK_COMPILED_JS_DIR)):
                 os.mkdir(os.path.dirname(MOCK_COMPILED_JS_DIR))
 
@@ -138,30 +143,29 @@ class TypescriptChecksTests(test_utils.GenericTestBase):
 
     def test_no_error_for_valid_compilation_of_tsconfig(self) -> None:
         """Test that no error is produced if stdout is empty."""
-        with self.popen_swap:
+        with self.popen_swap, self.stdout_swap:
             run_typescript_checks.compile_and_check_typescript(
                 run_typescript_checks.TSCONFIG_FILEPATH
             )
 
     def test_no_error_for_valid_compilation_of_strict_tsconfig(self) -> None:
         """Test that no error is produced if stdout is empty."""
-        with self.popen_swap:
+        with self.popen_swap, self.stdout_swap:
             run_typescript_checks.compile_and_check_typescript(
                 run_typescript_checks.STRICT_TSCONFIG_FILEPATH
             )
 
     def test_error_is_raised_for_invalid_compilation_of_tsconfig(self) -> None:
         """Test that error is produced if stdout is not empty."""
-        process = subprocess.Popen(
-            ['echo', 'test'], stdout=subprocess.PIPE, encoding='utf-8'
-        )
+        process = scripts_test_utils.PopenStub()
+        stdout_swap = self.swap(process, 'stdout', io.StringIO('test\n'))
 
         def mock_popen_for_errors(  # pylint: disable=unused-argument
             unused_cmd: str, stdout: str, encoding: str
-        ) -> subprocess.Popen[str]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             return process
 
-        with self.swap(subprocess, 'Popen', mock_popen_for_errors):
+        with self.swap(subprocess, 'Popen', mock_popen_for_errors), stdout_swap:
             with self.assertRaisesRegex(SystemExit, '1'):
                 run_typescript_checks.compile_and_check_typescript(
                     run_typescript_checks.TSCONFIG_FILEPATH
@@ -171,21 +175,23 @@ class TypescriptChecksTests(test_utils.GenericTestBase):
         self,
     ) -> None:
         """Test that error is produced if stdout is not empty."""
-        empty_process = subprocess.Popen(
-            ['echo', ''], stdout=subprocess.PIPE, encoding='utf-8'
+        empty_process = scripts_test_utils.PopenStub()
+        non_empty_process = scripts_test_utils.PopenStub()
+        empty_stdout_swap = self.swap(
+            empty_process, 'stdout', io.StringIO('\n')
         )
-        non_empty_process = subprocess.Popen(
-            [
-                'echo',
-                'core/new_directory/new_file.ts\ncore/new_directory/fake_excluded_file.ts',
-            ],
-            stdout=subprocess.PIPE,
-            encoding='utf-8',
+        non_empty_stdout_swap = self.swap(
+            non_empty_process,
+            'stdout',
+            io.StringIO(
+                'core/new_directory/new_file.ts\n'
+                'core/new_directory/fake_excluded_file.ts\n'
+            ),
         )
 
         def mock_popen_for_errors(  # pylint: disable=unused-argument
             cmd_tokens: List[str], stdout: str, encoding: str
-        ) -> subprocess.Popen[str]:
+        ) -> scripts_test_utils.PopenStub:
             if cmd_tokens == [
                 './node_modules/typescript/bin/tsc',
                 '--project',
@@ -202,7 +208,7 @@ class TypescriptChecksTests(test_utils.GenericTestBase):
 
         with self.swap(
             subprocess, 'Popen', mock_popen_for_errors
-        ), swap_exclude_paths:
+        ), swap_exclude_paths, empty_stdout_swap, non_empty_stdout_swap:
             with self.assertRaisesRegex(SystemExit, '1'):
                 run_typescript_checks.compile_and_check_typescript(
                     run_typescript_checks.STRICT_TSCONFIG_FILEPATH
@@ -691,9 +697,15 @@ class TypescriptChecksTests(test_utils.GenericTestBase):
             mock_compile_and_check_angular_templates,
         )
 
-        with compile_and_check_typescript_swap:
-            with compile_and_check_angular_templates_swap:
-                run_typescript_checks.main(args=[])
+        type_tests_swap = self.swap(
+            run_typescript_checks, 'run_typescript_type_tests', lambda: None
+        )
+        with (
+            compile_and_check_typescript_swap,
+            compile_and_check_angular_templates_swap,
+            type_tests_swap,
+        ):
+            run_typescript_checks.main(args=[])
 
     def test_config_path_when_strict_checks_arg_is_used(self) -> None:
         """Test if the config path is correct when strict checks arg is used."""
@@ -720,9 +732,13 @@ class TypescriptChecksTests(test_utils.GenericTestBase):
             mock_compile_and_check_angular_templates,
         )
 
+        type_tests_swap = self.swap(
+            run_typescript_checks, 'run_typescript_type_tests', lambda: None
+        )
         with (
             compile_and_check_typescript_swap,
             compile_and_check_angular_templates_swap,
+            type_tests_swap,
         ):
             run_typescript_checks.main(args=['--strict_checks'])
 

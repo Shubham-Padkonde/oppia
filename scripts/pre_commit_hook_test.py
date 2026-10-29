@@ -24,6 +24,7 @@ import shutil
 import subprocess
 
 from core.tests import test_utils
+from scripts import scripts_test_utils
 
 from typing import List, Tuple
 
@@ -227,15 +228,13 @@ class PreCommitHookTests(test_utils.GenericTestBase):
         )
 
     def test_start_subprocess_for_result(self) -> None:
-        process = subprocess.Popen(
-            ['echo', 'test'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process = scripts_test_utils.PopenStub(stdout=b'test\n')
 
         def mock_popen(  # pylint: disable=unused-argument
             unused_cmd_tokens: List[str],
             stdout: int = subprocess.PIPE,
             stderr: int = subprocess.PIPE,
-        ) -> subprocess.Popen[bytes]:
+        ) -> scripts_test_utils.PopenStub:
             return process
 
         with self.swap(subprocess, 'Popen', mock_popen):

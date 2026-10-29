@@ -23,7 +23,7 @@ import os
 import subprocess
 
 from core.tests import test_utils
-from scripts import concurrent_task_utils
+from scripts import concurrent_task_utils, scripts_test_utils
 
 from typing import Final, List, Tuple
 
@@ -104,21 +104,18 @@ class JsTsLintTests(test_utils.LinterTestBase):
                 js_ts_linter.compile_all_ts_files()
 
     def test_third_party_linter_with_stderr(self) -> None:
-        process = subprocess.Popen(['test'], stdout=subprocess.PIPE)
+        process = scripts_test_utils.PopenStub(
+            stdout=b'Output', stderr=b'Invalid', return_code=1
+        )
 
         def mock_popen(  # pylint: disable=unused-argument
             unused_cmd: str, stdout: int, stderr: int
-        ) -> subprocess.Popen[bytes]:  # pylint: disable=unsubscriptable-object
+        ) -> scripts_test_utils.PopenStub:
             return process
 
-        def mock_communicate(unused_self: str) -> Tuple[bytes, bytes]:
-            return (b'Output', b'Invalid')
-
         popen_swap = self.swap(subprocess, 'Popen', mock_popen)
-        communicate_swap = self.swap(
-            subprocess.Popen, 'communicate', mock_communicate
-        )
-        with popen_swap, communicate_swap:
+        exists_swap = self.swap(os.path, 'exists', lambda _path: True)
+        with exists_swap, popen_swap:
             with self.assertRaisesRegex(Exception, 'Invalid'):
                 js_ts_linter.ThirdPartyJsTsLintChecksManager(
                     [VALID_TS_FILEPATH]
